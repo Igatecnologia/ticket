@@ -1,0 +1,12 @@
+# Arquivo de ambiente com senhas reais
+.env
+
+# Backups locais
+backups/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
