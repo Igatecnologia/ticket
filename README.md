@@ -105,10 +105,56 @@ O logo aparece no painel, no chat widget e nos e-mails.
 
 ## Producao (com dominio e SSL)
 
-1. Edite `.env`: `FRONTEND_URL=https://suporte.seudominio.com` e `FORCE_SSL=true`
-2. Configure SMTP no `.env`
-3. Instale Nginx + Certbot
-4. Aponte o dominio para o IP do servidor
+Dominio oficial: **suporte.igatech.com.br**
+
+### 1. Pre-requisitos no servidor
+- Docker e Docker Compose instalados
+- Portas 80 e 443 liberadas
+- DNS `suporte.igatech.com.br` apontando para o IP do servidor
+
+### 2. Clonar o repositorio
+```bash
+sudo mkdir -p /opt
+cd /opt
+sudo git clone https://github.com/Igatecnologia/Ticket.git ticket
+sudo chown -R $USER:$USER /opt/ticket
+cd /opt/ticket
+```
+
+### 3. Subir o Chatwoot
+```bash
+chmod +x setup.sh backup.sh nginx-setup.sh
+./setup.sh
+```
+O script gera senhas automaticas, sobe os containers e cria a conta admin.
+
+Depois, edite o `.env` gerado e confirme:
+```
+FRONTEND_URL=https://suporte.igatech.com.br
+FORCE_SSL=true
+```
+E reinicie: `docker compose restart`
+
+### 4. Nginx + SSL (Let's Encrypt)
+```bash
+sudo ./nginx-setup.sh
+```
+Isto instala Nginx, publica o vhost em `/etc/nginx/sites-available/chatwoot`,
+emite o certificado via Certbot e ativa o redirect 80 -> 443.
+
+Para usar outro dominio: `sudo DOMINIO=ticket.igatech.com.br ./nginx-setup.sh`
+
+### 5. SMTP (quando for configurar)
+Edite o `.env` com as credenciais do provedor e rode `docker compose restart`.
+Ex. Gmail/Workspace:
+```
+SMTP_ADDRESS=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=suporte@igatech.com.br
+SMTP_PASSWORD=xxxx-xxxx-xxxx-xxxx
+SMTP_AUTHENTICATION=plain
+SMTP_ENABLE_STARTTLS_AUTO=true
+```
 
 ## Comandos uteis
 
