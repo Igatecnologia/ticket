@@ -144,7 +144,76 @@ emite o certificado via Certbot e ativa o redirect 80 -> 443.
 
 Para usar outro dominio: `sudo DOMINIO=ticket.igatech.com.br ./nginx-setup.sh`
 
-### 5. SMTP (quando for configurar)
+### 5. Deploy no Oracle Cloud Free Tier (Ampere A1 ARM)
+
+Passo a passo do zero em uma VM gratuita do Oracle Cloud.
+
+#### 5.1. Criar a VM no console OCI
+1. Acesse https://cloud.oracle.com > **Compute > Instances > Create Instance**
+2. **Image**: Canonical Ubuntu 22.04 (ou 24.04)
+3. **Shape**: clique em *Change shape* > **Ampere** > `VM.Standard.A1.Flex`
+   - OCPUs: **2** (pode ir ate 4 no always free)
+   - Memory: **12 GB** (pode ir ate 24 GB)
+4. **Networking**: deixe criar nova VCN e subnet publica. Assigne public IPv4.
+5. **SSH Keys**: suba sua chave publica (ou gere e baixe a privada)
+6. Create > aguarde status *Running*, copie o **Public IP**
+
+#### 5.2. Liberar portas 80 e 443 na Security List (ETAPA CRITICA)
+O Oracle bloqueia **tudo** por padrao no nivel da VCN. Mesmo instalando
+Nginx certinho, nada entra ate voce liberar no console:
+
+1. **Networking > Virtual Cloud Networks** > clique na VCN criada
+2. **Security Lists** > clique na *Default Security List*
+3. **Add Ingress Rules** duas vezes:
+   - Source CIDR `0.0.0.0/0`, IP Protocol **TCP**, Destination Port **80**
+   - Source CIDR `0.0.0.0/0`, IP Protocol **TCP**, Destination Port **443**
+
+Sem isso, o Certbot falha e o site nao abre.
+
+#### 5.3. Apontar o DNS
+No provedor do dominio `igatech.com.br`, crie um registro:
+```
+Tipo: A
+Nome: suporte
+Valor: <IP publico da VM>
+TTL:   300
+```
+Confirme com `dig suporte.igatech.com.br +short` ate ver o IP certo.
+
+#### 5.4. SSH + preparar a VM
+```bash
+ssh -i ~/.ssh/sua_chave ubuntu@<IP-DA-VM>
+
+# Clonar o repo e rodar o preparador
+git clone https://github.com/Igatecnologia/Ticket.git
+cd Ticket
+chmod +x oracle-cloud-setup.sh
+./oracle-cloud-setup.sh
+```
+O script instala Docker, cria 4GB de swap, libera 80/443 no iptables
+(outra armadilha especifica do Oracle Ubuntu) e clona o repo em `/opt/ticket`.
+
+**Faca logout/login apos rodar** (para o grupo docker valer sem sudo).
+
+#### 5.5. Subir o Chatwoot
+```bash
+cd /opt/ticket
+./setup.sh
+
+# editar .env e confirmar:
+#   FRONTEND_URL=https://suporte.igatech.com.br
+#   FORCE_SSL=true
+nano .env
+docker compose restart
+```
+
+#### 5.6. Nginx + SSL
+```bash
+sudo ./nginx-setup.sh
+```
+Pronto. Acesse https://suporte.igatech.com.br.
+
+### 6. SMTP (quando for configurar)
 Edite o `.env` com as credenciais do provedor e rode `docker compose restart`.
 Ex. Gmail/Workspace:
 ```
